@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('id_session',100);
             $table->foreign('id_session')->references('id')->on('session_chats')->onDelete('cascade')->onUpdate('cascade');
             $table->enum('sender_type', ['user', 'ai']);
-            $table->longText('message_chat');
+            $table->longText('message');
             $table->timestamps();
         });
     }

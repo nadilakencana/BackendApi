@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use App\Models\HistoryChat;
 use App\Models\SessionChats;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 
 class HistoryChatController extends Controller
 {
@@ -18,18 +20,21 @@ class HistoryChatController extends Controller
             'message' => 'required|string',
         ]);
 
+
+        $user = Auth::user();
         $userMessage = $request->input('message');
         $sessionId = $request->input('id_session');
 
         $session = null;
         if ($sessionId) {
-            $session = SessionChats::find($sessionId);
+            $session = SessionChats::where('id',$sessionId)->where('user_id', $user->id)->first();
         }
 
         if (!$session) {
             $sessionId = (string) Str::uuid(); 
             $session = SessionChats::create([
                 'id' => $sessionId,
+                'user_id' => $user->id,
                 'started_at' => now(),
                 'title' => 'New Chat Session ' . now()->format('Y-m-d H:i') 
             ]);
@@ -43,19 +48,27 @@ class HistoryChatController extends Controller
         ]);
 
       
-        $apiKey = env('GEMINI_API_KEY');
-        $model = 'gemini-pro'; 
+        $apiKey = env('GEMINI_API_KEY', 'AIzaSyBDb1UcXeNumxAJTYdL1QF6rOzch5DLtxU');
+        $model = 'gemini-1.5-flash'; 
         $client = new Client();
 
         $history = $session->messages()->orderBy('created_at', 'asc')->get();
         $contents = [];
         foreach ($history as $msg) {
-            $contents[] = ['parts' => [['text' => $msg->message]]];
+            $role = ($msg->sender_type === 'user') ? 'user' : 'model'; 
+            $contents[] = [
+                'role' => $role,
+                'parts' => [['text' => $msg->message]]
+                ];
         }
 
-        $contents[] = ['parts' => [['text' => $userMessage]]]; 
+        $contents[] = [
+            'role' => 'user',
+            'parts' => [['text' => $userMessage]]
+        ]; 
 
         try {
+            // https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=AIzaSyBDb1UcXeNumxAJTYdL1QF6rOzch5DLtxU
             $response = $client->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}", [
                 'json' => [
                     'contents' => $contents 
@@ -102,16 +115,18 @@ class HistoryChatController extends Controller
 
     public function getSessions(Request $request)
     {
-       
-        $sessions = SessionChats::orderBy('updated_at', 'desc')->get(['id', 'title', 'started_at']);
+        $user = Auth::user();
+        $sessions = $user->sessions()->orderBy('updated_at', 'desc')->get(['id', 'title', 'started_at']);
         return response()->json($sessions);
     }
 
     public function getHistory(Request $request, $sessionId)
     {
-        $history = HistoryChat::where('id_session', $sessionId)
-                              ->orderBy('created_at', 'asc')
-                              ->get(['sender_type', 'message', 'created_at']);
+        $user = Auth::user();
+        $session = SessionChats::where('id', $sessionId)
+                              ->where('user_id', $user->id)
+                              ->firstOrFail();
+        $history = $session->messages()->orderBy('created_at', 'asc')->get(['sender_type', 'message', 'created_at']);
         return response()->json($history);
     }
 }

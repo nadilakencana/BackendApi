@@ -10,10 +10,14 @@ class SessionChats extends Model
     protected $primaryKey = 'id';
     public $incrementing = false; 
     protected $keyType = 'string';
-    protected $fillable = ['id', 'title', 'started_at', 'ended_at'];
+    protected $fillable = ['id', 'title', 'started_at', 'ended_at','user_id'];
 
     public function messages()
     {
         return $this->hasMany(HistoryChat::class, 'id_session', 'id');
+    }
+
+    public function user(){
+        return $this->belongsTo(User::class);
     }
 }
