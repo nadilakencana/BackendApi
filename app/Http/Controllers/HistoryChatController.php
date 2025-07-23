@@ -47,8 +47,8 @@ class HistoryChatController extends Controller
             'message' => $userMessage,
         ]);
 
-      
-        $apiKey = env('GEMINI_API_KEY', 'AIzaSyBDb1UcXeNumxAJTYdL1QF6rOzch5DLtxU');
+            
+        $apiKey = env('GEMINI_API_KEY', $key);
         $model = 'gemini-1.5-flash'; 
         $client = new Client();
 
@@ -68,7 +68,6 @@ class HistoryChatController extends Controller
         ]; 
 
         try {
-            // https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=AIzaSyBDb1UcXeNumxAJTYdL1QF6rOzch5DLtxU
             $response = $client->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}", [
                 'json' => [
                     'contents' => $contents 
